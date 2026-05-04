@@ -1,0 +1,26 @@
+[package]
+name = "ghostpay"
+version = "0.1.0"
+description = "GhostPay — private payroll for DAOs on Solana, powered by Encrypt FHE"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "ghostpay"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "1.0.1"
+
+# Encrypt FHE SDK (pre-alpha) — pulled directly from the source repo until it's
+# published. The crate names match the workspace declarations upstream.
+encrypt-anchor = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha", branch = "main" }
+encrypt-types  = { git = "https://github.com/dwallet-labs/encrypt-pre-alpha", branch = "main" }
+encrypt-dsl    = { package = "encrypt-solana-dsl", git = "https://github.com/dwallet-labs/encrypt-pre-alpha", branch = "main" }
