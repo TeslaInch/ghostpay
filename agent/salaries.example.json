@@ -1,0 +1,6 @@
+{
+  "_comment": "Off-chain salary registry. Keys are contributor wallet pubkeys (matches what was passed to register_contributor on-chain). Amounts are in USDC smallest units (6 decimals). The encrypted on-chain ciphertexts must be derived from the same numbers via Encrypt's gRPC createInput.",
+  "ChnwWgpe8oAo9bChs5t31c6mkm1bMXQHGnNyqHpCi4bk": 5000,
+  "73pf8N86Pjzyyt9x19dxJAG3XGXGjravfujrjCPd4JPu": 7500,
+  "2w8g8WGsRNzFdEiH3kL3xAnEQg3RYnMcnGgK6UeeLFfu": 3000
+}

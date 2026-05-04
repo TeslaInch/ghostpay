@@ -1,0 +1,1414 @@
+{
+  "address": "AgHtDZL7Sr8KPhAxxBxwgxrgU3SxrLPrfRhLGYDZaCix",
+  "metadata": {
+    "name": "ghostpay",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "GhostPay — private payroll for DAOs on Solana, powered by Encrypt FHE"
+  },
+  "instructions": [
+    {
+      "name": "benchmark_salary",
+      "docs": [
+        "Homomorphically compare a contributor's salary to a benchmark median.",
+        "Result ciphertext encodes 1 if salary ≥ median, else 0."
+      ],
+      "discriminator": [
+        39,
+        17,
+        73,
+        35,
+        161,
+        108,
+        144,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor"
+        },
+        {
+          "name": "salary_ct",
+          "writable": true
+        },
+        {
+          "name": "median_ct",
+          "writable": true
+        },
+        {
+          "name": "result_ct",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "encrypt_program"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "deposit",
+          "writable": true
+        },
+        {
+          "name": "cpi_authority"
+        },
+        {
+          "name": "caller_program"
+        },
+        {
+          "name": "network_encryption_key"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cpi_authority_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "close_contributor",
+      "discriminator": [
+        86,
+        7,
+        222,
+        53,
+        203,
+        30,
+        205,
+        28
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.admin",
+                "account": "DaoVault"
+              }
+            ]
+          },
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "compute_payroll_burn",
+      "docs": [
+        "Homomorphically sum three contributors' salaries into a fresh",
+        "encrypted total-burn ciphertext, and mint a `PayrollBatch` record."
+      ],
+      "discriminator": [
+        190,
+        89,
+        227,
+        36,
+        203,
+        18,
+        200,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor_a",
+            "contributor_b",
+            "contributor_c"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "batch_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contributor_a"
+        },
+        {
+          "name": "contributor_b"
+        },
+        {
+          "name": "contributor_c"
+        },
+        {
+          "name": "salary_a_ct",
+          "writable": true
+        },
+        {
+          "name": "salary_b_ct",
+          "writable": true
+        },
+        {
+          "name": "salary_c_ct",
+          "writable": true
+        },
+        {
+          "name": "burn_total_ct",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "encrypt_program"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "deposit",
+          "writable": true
+        },
+        {
+          "name": "cpi_authority"
+        },
+        {
+          "name": "caller_program"
+        },
+        {
+          "name": "network_encryption_key"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "batch_id",
+          "type": "u64"
+        },
+        {
+          "name": "cpi_authority_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vault_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "register_contributor",
+      "discriminator": [
+        14,
+        116,
+        59,
+        252,
+        26,
+        253,
+        91,
+        175
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "wallet",
+          "type": "pubkey"
+        },
+        {
+          "name": "sol_pct",
+          "type": "u8"
+        },
+        {
+          "name": "usdc_pct",
+          "type": "u8"
+        },
+        {
+          "name": "fiat_pct",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "request_burn_decrypt",
+      "docs": [
+        "Admin-initiated decryption request for a `PayrollBatch`'s",
+        "homomorphic burn total. Stores the digest on the batch for later",
+        "reveal verification."
+      ],
+      "discriminator": [
+        150,
+        220,
+        240,
+        39,
+        105,
+        138,
+        173,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "batch"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "batch.batch_id",
+                "account": "PayrollBatch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_total_ct"
+        },
+        {
+          "name": "request_acct",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "encrypt_program"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "deposit",
+          "writable": true
+        },
+        {
+          "name": "cpi_authority"
+        },
+        {
+          "name": "caller_program"
+        },
+        {
+          "name": "network_encryption_key"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cpi_authority_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "request_salary_decrypt",
+      "docs": [
+        "Contributor-initiated request to decrypt their own salary via the",
+        "Encrypt decryptor network. Stores the returned digest on the",
+        "`ContributorRecord` so the reveal step can verify the response."
+      ],
+      "discriminator": [
+        124,
+        28,
+        48,
+        97,
+        23,
+        108,
+        238,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "salary_ct"
+        },
+        {
+          "name": "request_acct",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "encrypt_program"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "deposit",
+          "writable": true
+        },
+        {
+          "name": "cpi_authority"
+        },
+        {
+          "name": "caller_program"
+        },
+        {
+          "name": "network_encryption_key"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cpi_authority_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "reveal_burn_total",
+      "docs": [
+        "Reveal a previously-requested burn-total decryption. Verifies the",
+        "response against `batch.pending_decrypt_digest`, emits it as a",
+        "`BurnTotalRevealed` event, and clears the digest. Cleartext is",
+        "**never** stored on-chain."
+      ],
+      "discriminator": [
+        34,
+        229,
+        57,
+        221,
+        100,
+        109,
+        196,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "batch"
+          ]
+        },
+        {
+          "name": "batch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "batch.batch_id",
+                "account": "PayrollBatch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "request_acct"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_salary",
+      "docs": [
+        "Reveal a previously-requested salary decryption. Verifies the",
+        "decryptor network's response against the digest captured at request",
+        "time, emits the cleartext as a `SalaryRevealed` event, and clears",
+        "the stored digest so a stale request can't be replayed.",
+        "",
+        "The cleartext is **never** stored on-chain — it lives only in the",
+        "transaction log, available off-chain via RPC."
+      ],
+      "discriminator": [
+        8,
+        71,
+        253,
+        107,
+        185,
+        162,
+        221,
+        93
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "request_acct",
+          "docs": [
+            "against `contributor.pending_decrypt_digest` inside the instruction."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "run_payroll",
+      "docs": [
+        "Homomorphically verify the vault has enough balance to pay one",
+        "contributor's salary, deduct it, and emit a fresh `payment_ct`. The",
+        "vault's balance ciphertext is updated in place — output overwrites",
+        "input — so subsequent calls observe the deducted balance."
+      ],
+      "discriminator": [
+        224,
+        128,
+        206,
+        1,
+        134,
+        16,
+        133,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor"
+        },
+        {
+          "name": "vault_balance_ct",
+          "writable": true
+        },
+        {
+          "name": "salary_ct",
+          "writable": true
+        },
+        {
+          "name": "payment_ct",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "encrypt_program"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "deposit",
+          "writable": true
+        },
+        {
+          "name": "cpi_authority"
+        },
+        {
+          "name": "caller_program"
+        },
+        {
+          "name": "network_encryption_key"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cpi_authority_bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_salary",
+      "docs": [
+        "Bind a pre-created encrypted salary ciphertext to a contributor.",
+        "Admin only. The ciphertext must already be authorized to this program."
+      ],
+      "discriminator": [
+        13,
+        231,
+        102,
+        58,
+        172,
+        183,
+        98,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          },
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "contributor.wallet",
+                "account": "ContributorRecord"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "salary_ct"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_vault_balance",
+      "docs": [
+        "Bind a pre-created encrypted treasury balance ciphertext to the vault.",
+        "The ciphertext must already be authorized to this program."
+      ],
+      "discriminator": [
+        63,
+        79,
+        5,
+        140,
+        144,
+        95,
+        116,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "balance_ct"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_preferences",
+      "discriminator": [
+        16,
+        64,
+        128,
+        133,
+        19,
+        206,
+        101,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "relations": [
+            "contributor"
+          ]
+        },
+        {
+          "name": "contributor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet",
+          "signer": true,
+          "relations": [
+            "contributor"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "sol_pct",
+          "type": "u8"
+        },
+        {
+          "name": "usdc_pct",
+          "type": "u8"
+        },
+        {
+          "name": "fiat_pct",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ContributorRecord",
+      "discriminator": [
+        205,
+        80,
+        134,
+        228,
+        85,
+        135,
+        197,
+        176
+      ]
+    },
+    {
+      "name": "DaoVault",
+      "discriminator": [
+        168,
+        220,
+        223,
+        166,
+        77,
+        241,
+        169,
+        48
+      ]
+    },
+    {
+      "name": "PayrollBatch",
+      "discriminator": [
+        163,
+        228,
+        23,
+        27,
+        184,
+        54,
+        182,
+        104
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BurnTotalRevealed",
+      "discriminator": [
+        13,
+        218,
+        58,
+        171,
+        93,
+        107,
+        188,
+        232
+      ]
+    },
+    {
+      "name": "SalaryRevealed",
+      "discriminator": [
+        203,
+        237,
+        40,
+        1,
+        130,
+        22,
+        58,
+        75
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NameTooLong",
+      "msg": "Vault name exceeds maximum length"
+    },
+    {
+      "code": 6001,
+      "name": "PercentagesMustSumTo100",
+      "msg": "Salary split percentages must sum to 100"
+    },
+    {
+      "code": 6002,
+      "name": "Unauthorized",
+      "msg": "Caller is not authorized for this action"
+    },
+    {
+      "code": 6003,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6004,
+      "name": "Underflow",
+      "msg": "Arithmetic underflow"
+    },
+    {
+      "code": 6005,
+      "name": "CiphertextMismatch",
+      "msg": "Provided ciphertext account does not match the on-chain record"
+    },
+    {
+      "code": 6006,
+      "name": "DecryptionNotComplete",
+      "msg": "Decryption response not yet available or digest mismatch"
+    }
+  ],
+  "types": [
+    {
+      "name": "BurnTotalRevealed",
+      "docs": [
+        "Emitted by `reveal_burn_total` once the decryptor network's response is",
+        "verified. The cleartext lives only in the transaction log — never on chain."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "batch_id",
+            "type": "u64"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "revealed_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContributorRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "sol_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "usdc_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "fiat_percentage",
+            "type": "u8"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "salary_ct",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pending_decrypt_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DaoVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault_name",
+            "type": "string"
+          },
+          {
+            "name": "contributor_count",
+            "type": "u64"
+          },
+          {
+            "name": "balance_ct",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayrollBatch",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "batch_id",
+            "type": "u64"
+          },
+          {
+            "name": "executed_at",
+            "type": "i64"
+          },
+          {
+            "name": "contributor_count",
+            "type": "u64"
+          },
+          {
+            "name": "burn_total_ct",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pending_decrypt_digest",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "PayrollStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayrollStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Executed"
+          },
+          {
+            "name": "Failed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SalaryRevealed",
+      "docs": [
+        "Emitted by `reveal_salary` once the decryptor network's response is",
+        "verified. The cleartext lives only in the transaction log — never on chain."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contributor",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "salary",
+            "type": "u64"
+          },
+          {
+            "name": "revealed_at",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

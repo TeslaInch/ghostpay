@@ -1,0 +1,26 @@
+{
+  "name": "@ghostpay/agent",
+  "version": "0.1.0",
+  "description": "AI payroll agent for GhostPay — reads encrypted treasury state, plans optimal contributor payouts via Jupiter, and executes via the on-chain FHE program.",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "plan": "ts-node src/index.ts plan",
+    "execute": "ts-node src/index.ts execute",
+    "status": "ts-node src/index.ts status"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.0",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.16.0",
+    "dotenv": "^17.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}
