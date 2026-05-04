@@ -1,5 +1,8 @@
 import axios from "axios";
 
+const AGENT_URL =
+  process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:3001";
+
 export interface PayrollPlanResponse {
   vault_address: string;
   vault_name: string;
@@ -35,39 +38,78 @@ export interface PayrollPlanResponse {
   notes: string[];
 }
 
-/**
- * Calls the local mock endpoint at /api/plan today; will route through
- * the agent service once it's exposed as a REST endpoint.
- */
-export async function fetchPayrollPlan(
-  vault: string
-): Promise<PayrollPlanResponse> {
-  const res = await axios.get<PayrollPlanResponse>("/api/plan", {
-    params: { vault },
-    timeout: 12_000,
-  });
-  return res.data;
+export interface VaultStatusResponse {
+  vault_address: string;
+  vault_name: string;
+  admin: string;
+  encrypted_balance_ct: string;
+  contributor_count: number;
+  contributors: {
+    pda: string;
+    wallet: string;
+    sol_percentage: number;
+    usdc_percentage: number;
+    fiat_percentage: number;
+    salary_ct: string;
+  }[];
+  balances: {
+    vault_pda_sol: number;
+    admin_sol: number;
+    vault_usdc: number | null;
+    admin_usdc: number | null;
+    sol_price_usd: number;
+  };
+  total_monthly_burn_usd: number;
+  treasury_runway_months: number | null;
+  budgeted_contributor_count: number;
+  notes: string[];
+}
+
+export interface ExecutionResultRow {
+  contributor: string;
+  wallet: string;
+  payment_ct: string;
+  run_payroll_sig: string;
+  sol_transfer_sig: string | null;
+  sol_transferred_lamports: number;
+  notes: string[];
 }
 
 export interface ExecutionResponse {
-  results: {
-    contributor: string;
-    wallet: string;
-    payment_ct: string;
-    run_payroll_sig: string;
-    sol_transfer_sig: string | null;
-    sol_transferred_lamports: number;
-    notes: string[];
-  }[];
+  success: boolean;
+  transactions: string[];
+  results: ExecutionResultRow[];
+  error?: string;
+}
+
+export async function fetchVaultStatus(
+  vaultAddress: string
+): Promise<VaultStatusResponse> {
+  const res = await axios.get<VaultStatusResponse>(
+    `${AGENT_URL}/api/vault/${vaultAddress}/status`,
+    { timeout: 12_000 }
+  );
+  return res.data;
+}
+
+export async function fetchPayrollPlan(
+  vaultAddress: string
+): Promise<PayrollPlanResponse> {
+  const res = await axios.post<PayrollPlanResponse>(
+    `${AGENT_URL}/api/payroll/plan`,
+    { vault_address: vaultAddress },
+    { timeout: 30_000 }
+  );
+  return res.data;
 }
 
 export async function executePayroll(
-  vault: string
+  vaultAddress: string
 ): Promise<ExecutionResponse> {
   const res = await axios.post<ExecutionResponse>(
-    "/api/execute",
-    { vault },
-    { timeout: 30_000 }
+    `${AGENT_URL}/api/payroll/execute`,
+    { vault_address: vaultAddress },
+    { timeout: 120_000 }
   );
   return res.data;
 }

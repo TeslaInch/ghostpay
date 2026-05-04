@@ -3,23 +3,21 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Card, CardHeader, StatValue } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { VaultData } from "@/hooks/use-vault";
 import {
   ExecutionResponse,
   PayrollPlanResponse,
+  VaultStatusResponse,
   executePayroll,
   fetchPayrollPlan,
 } from "@/lib/agent-api";
-import { lamportsToSol } from "@/lib/state";
+import { txUrl, shortSig } from "@/lib/explorer";
 
 interface Props {
-  data: VaultData;
+  status: VaultStatusResponse;
 }
 
-export function TreasurerView({ data }: Props) {
-  const { vault, contributors, balances } = data;
+export function TreasurerView({ status }: Props) {
   const [plan, setPlan] = useState<PayrollPlanResponse | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -28,26 +26,36 @@ export function TreasurerView({ data }: Props) {
   const handlePlan = async () => {
     setPlanLoading(true);
     try {
-      const p = await fetchPayrollPlan(vault.vault.toBase58());
+      const p = await fetchPayrollPlan(status.vault_address);
       setPlan(p);
       toast.success(
         `Plan ready · ${p.contributors} contributors · $${p.total_monthly_burn_usd} burn`
       );
     } catch (err: any) {
-      toast.error(`Plan failed: ${err?.message ?? err}`);
+      const msg = err?.response?.data?.error ?? err?.message ?? String(err);
+      toast.error(`Plan failed: ${msg}`);
     } finally {
       setPlanLoading(false);
     }
   };
 
   const handleExecute = async () => {
+    if (
+      !confirm(
+        "This will sign run_payroll + SOL transfers on devnet for every contributor. Continue?"
+      )
+    )
+      return;
     setExecuting(true);
     try {
-      const r = await executePayroll(vault.vault.toBase58());
+      const r = await executePayroll(status.vault_address);
       setResults(r);
-      toast.success(`Executed ${r.results.length} payments`);
+      toast.success(
+        `Executed ${r.results.length} payments · ${r.transactions.length} transactions`
+      );
     } catch (err: any) {
-      toast.error(`Execute failed: ${err?.message ?? err}`);
+      const msg = err?.response?.data?.error ?? err?.message ?? String(err);
+      toast.error(`Execute failed: ${msg}`);
     } finally {
       setExecuting(false);
     }
@@ -60,10 +68,10 @@ export function TreasurerView({ data }: Props) {
           Treasurer view
         </p>
         <h1 className="text-3xl font-semibold text-[var(--fg)]">
-          {vault.vaultName}
+          {status.vault_name}
         </h1>
         <p className="mt-1 font-mono text-xs text-[var(--fg-subtle)]">
-          {vault.vault.toBase58()}
+          {status.vault_address}
         </p>
       </div>
 
@@ -71,24 +79,27 @@ export function TreasurerView({ data }: Props) {
         <Card>
           <CardHeader title="Vault SOL" icon={<SolIcon />} />
           <StatValue
-            value={lamportsToSol(balances.vaultPdaSol).toFixed(4)}
+            value={status.balances.vault_pda_sol.toFixed(4)}
             unit="SOL (PDA)"
           />
           <p className="mt-1 text-xs text-[var(--fg-subtle)]">
-            +{lamportsToSol(balances.adminSol).toFixed(2)} SOL in admin wallet
+            +{status.balances.admin_sol.toFixed(2)} SOL in admin wallet
           </p>
         </Card>
 
         <Card>
           <CardHeader title="USDC" icon={<DollarIcon />} />
           <StatValue
-            value={balances.vaultUsdc !== null
-              ? (Number(balances.vaultUsdc) / 1_000_000).toFixed(2)
-              : "—"}
+            value={
+              status.balances.vault_usdc !== null
+                ? status.balances.vault_usdc.toFixed(2)
+                : "—"
+            }
             unit="USDC"
           />
           <p className="mt-1 text-xs text-[var(--fg-subtle)]">
-            {balances.vaultUsdc === null && balances.adminUsdc === null
+            {status.balances.vault_usdc === null &&
+            status.balances.admin_usdc === null
               ? "No SPL token account yet"
               : "Vault + admin combined"}
           </p>
@@ -96,9 +107,9 @@ export function TreasurerView({ data }: Props) {
 
         <Card>
           <CardHeader title="Contributors" icon={<UsersIcon />} />
-          <StatValue value={contributors.length} unit="active" />
+          <StatValue value={status.contributor_count} unit="active" />
           <p className="mt-1 text-xs text-[var(--fg-subtle)]">
-            registered on-chain
+            {status.budgeted_contributor_count} budgeted in registry
           </p>
         </Card>
 
@@ -119,7 +130,7 @@ export function TreasurerView({ data }: Props) {
           <p className="mt-2 text-xs text-[var(--fg-subtle)]">
             Computed on encrypted data via FHE.{" "}
             <span className="font-mono text-[var(--fg-muted)]">
-              {vault.balanceCt.toBase58().slice(0, 8)}…
+              {status.encrypted_balance_ct.slice(0, 8)}…
             </span>
           </p>
         </Card>
@@ -129,13 +140,15 @@ export function TreasurerView({ data }: Props) {
         <Card>
           <CardHeader title="Treasury runway" />
           <StatValue
-            value={plan?.treasury_runway_months?.toFixed(1) ?? "—"}
+            value={
+              status.treasury_runway_months !== null
+                ? status.treasury_runway_months.toFixed(1)
+                : "—"
+            }
             unit="months"
           />
           <p className="mt-1 text-xs text-[var(--fg-subtle)]">
-            {plan
-              ? `at $${plan.total_monthly_burn_usd}/mo burn`
-              : "Run a plan to compute"}
+            at ${status.total_monthly_burn_usd}/mo budgeted burn
           </p>
         </Card>
 
@@ -182,12 +195,12 @@ export function TreasurerView({ data }: Props) {
       {/* Plan output */}
       {plan && (
         <Card>
-          <CardHeader title="Latest plan" hint={plan.vault_address.slice(0, 8) + "…"} />
+          <CardHeader
+            title="Latest plan"
+            hint={plan.vault_address.slice(0, 8) + "…"}
+          />
           <div className="mb-4 grid gap-4 sm:grid-cols-3">
-            <KV
-              k="Total burn"
-              v={`$${plan.total_monthly_burn_usd}`}
-            />
+            <KV k="Total burn" v={`$${plan.total_monthly_burn_usd}`} />
             <KV
               k="Runway"
               v={
@@ -198,6 +211,26 @@ export function TreasurerView({ data }: Props) {
             />
             <KV k="Estimated fees" v={`$${plan.estimated_fees_usd}`} />
           </div>
+          {plan.swaps_needed.length > 0 && (
+            <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/[0.04] p-3">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+                Swap recommended
+              </p>
+              {plan.swaps_needed.map((s, i) => (
+                <p key={i} className="text-sm text-[var(--fg)]">
+                  {s.from} → {s.to}: ${s.amount_usd}{" "}
+                  {s.route && (
+                    <span className="text-[var(--fg-muted)]">via {s.route}</span>
+                  )}{" "}
+                  {s.price_impact_pct !== null && (
+                    <span className="text-[var(--fg-subtle)]">
+                      (impact {s.price_impact_pct}%)
+                    </span>
+                  )}
+                </p>
+              ))}
+            </div>
+          )}
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--fg-muted)]">
             Per-contributor split
           </h4>
@@ -231,10 +264,7 @@ export function TreasurerView({ data }: Props) {
           {plan.notes.length > 0 && (
             <div className="mt-4 space-y-1.5">
               {plan.notes.map((n, i) => (
-                <p
-                  key={i}
-                  className="text-xs text-[var(--fg-muted)]"
-                >
+                <p key={i} className="text-xs text-[var(--fg-muted)]">
                   • {n}
                 </p>
               ))}
@@ -248,7 +278,7 @@ export function TreasurerView({ data }: Props) {
         <Card>
           <CardHeader
             title="Execution receipt"
-            hint={`${results.results.length} transfers`}
+            hint={`${results.transactions.length} txns · ${results.results.length} payees`}
           />
           <div className="space-y-2">
             {results.results.map((r) => (
@@ -261,18 +291,28 @@ export function TreasurerView({ data }: Props) {
                     {r.wallet.slice(0, 6)}…{r.wallet.slice(-4)}
                   </span>
                   <span className="text-xs text-[var(--accent)]">
-                    +{lamportsToSol(r.sol_transferred_lamports).toFixed(4)} SOL
+                    +{(r.sol_transferred_lamports / 1e9).toFixed(4)} SOL
                   </span>
                 </div>
-                <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-[var(--fg-subtle)]">
-                  <span>run_payroll: {r.run_payroll_sig.slice(0, 10)}…</span>
-                  <span>
-                    transfer:{" "}
-                    {r.sol_transfer_sig
-                      ? `${r.sol_transfer_sig.slice(0, 10)}…`
-                      : "—"}
-                  </span>
+                <div className="mt-2 grid gap-1 text-xs">
+                  <SignatureLink label="run_payroll" sig={r.run_payroll_sig} />
+                  {r.sol_transfer_sig ? (
+                    <SignatureLink label="transfer" sig={r.sol_transfer_sig} />
+                  ) : (
+                    <span className="text-[var(--fg-subtle)]">
+                      transfer: skipped
+                    </span>
+                  )}
                 </div>
+                {r.notes.length > 0 && (
+                  <div className="mt-2 space-y-0.5">
+                    {r.notes.map((n, i) => (
+                      <p key={i} className="text-[10px] text-[var(--fg-subtle)]">
+                        • {n}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -292,6 +332,30 @@ export function TreasurerView({ data }: Props) {
         </p>
       </Card>
     </div>
+  );
+}
+
+function SignatureLink({ label, sig }: { label: string; sig: string }) {
+  return (
+    <a
+      href={txUrl(sig)}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 font-mono text-[var(--fg-muted)] transition-colors hover:text-[var(--accent)]"
+    >
+      <span className="text-[var(--fg-subtle)]">{label}:</span>
+      <span>{shortSig(sig)}</span>
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M7 17L17 7M7 7h10v10" />
+      </svg>
+    </a>
   );
 }
 

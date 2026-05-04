@@ -1,25 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PublicKey } from "@solana/web3.js";
 import {
-  ContributorSnapshot,
-  fetchBalances,
-  fetchContributors,
-  fetchVault,
-  VaultBalances,
-  VaultSnapshot,
-} from "@/lib/state";
-import { buildReadProgram, getConnection } from "@/lib/anchor";
+  VaultStatusResponse,
+  fetchVaultStatus,
+} from "@/lib/agent-api";
 
-export interface VaultData {
-  vault: VaultSnapshot;
-  contributors: ContributorSnapshot[];
-  balances: VaultBalances;
-}
-
+/**
+ * Loads vault state via the agent's `GET /api/vault/:address/status` endpoint.
+ * Returns everything the dashboard needs in one round-trip — including the
+ * contributor list used for browser-side role detection — so the dashboard
+ * doesn't need a direct on-chain Anchor read.
+ */
 export function useVault(vaultAddress: string | null) {
-  const [data, setData] = useState<VaultData | null>(null);
+  const [data, setData] = useState<VaultStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -32,17 +26,14 @@ export function useVault(vaultAddress: string | null) {
 
     (async () => {
       try {
-        const program = buildReadProgram();
-        const connection = getConnection();
-        const vaultPubkey = new PublicKey(vaultAddress);
-        const vault = await fetchVault(program, vaultPubkey);
-        const [contributors, balances] = await Promise.all([
-          fetchContributors(program, vaultPubkey),
-          fetchBalances(connection, vault.vault, vault.admin),
-        ]);
-        if (!cancelled) setData({ vault, contributors, balances });
+        const status = await fetchVaultStatus(vaultAddress);
+        if (!cancelled) setData(status);
       } catch (err: any) {
-        if (!cancelled) setError(err?.message ?? String(err));
+        if (!cancelled) {
+          const msg =
+            err?.response?.data?.error ?? err?.message ?? String(err);
+          setError(msg);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

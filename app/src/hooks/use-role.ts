@@ -1,29 +1,27 @@
 "use client";
 
 import { useMemo } from "react";
-import { ContributorSnapshot, VaultSnapshot } from "@/lib/state";
+import { VaultStatusResponse } from "@/lib/agent-api";
+
+export type RoleContributor = VaultStatusResponse["contributors"][number];
 
 export type Role =
   | { kind: "treasurer"; admin: string }
-  | { kind: "contributor"; record: ContributorSnapshot }
+  | { kind: "contributor"; record: RoleContributor }
   | { kind: "guest" }
   | { kind: "unrecognized"; address: string };
 
 export function detectRole(
   walletAddress: string | null,
-  vault: VaultSnapshot | null,
-  contributors: ContributorSnapshot[] | null
+  status: VaultStatusResponse | null
 ): Role {
-  if (!walletAddress) return { kind: "guest" };
-  if (!vault) return { kind: "guest" };
+  if (!walletAddress || !status) return { kind: "guest" };
 
-  if (vault.admin.toBase58() === walletAddress) {
+  if (status.admin === walletAddress) {
     return { kind: "treasurer", admin: walletAddress };
   }
 
-  const match = contributors?.find(
-    (c) => c.wallet.toBase58() === walletAddress
-  );
+  const match = status.contributors.find((c) => c.wallet === walletAddress);
   if (match) {
     return { kind: "contributor", record: match };
   }
@@ -33,11 +31,10 @@ export function detectRole(
 
 export function useRole(
   walletAddress: string | null,
-  vault: VaultSnapshot | null,
-  contributors: ContributorSnapshot[] | null
+  status: VaultStatusResponse | null
 ): Role {
   return useMemo(
-    () => detectRole(walletAddress, vault, contributors),
-    [walletAddress, vault, contributors]
+    () => detectRole(walletAddress, status),
+    [walletAddress, status]
   );
 }

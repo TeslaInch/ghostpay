@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useVault } from "@/hooks/use-vault";
@@ -16,7 +16,6 @@ import { DEFAULT_VAULT_ADDRESS } from "@/lib/config";
 export default function DashboardPage() {
   const [vaultAddress] = useState<string>(DEFAULT_VAULT_ADDRESS);
 
-  // Privy hooks must be guarded — they throw if PrivyProvider isn't mounted.
   let privy: ReturnType<typeof usePrivy> | null = null;
   try {
     privy = usePrivy();
@@ -27,11 +26,7 @@ export default function DashboardPage() {
   const walletAddress = privy?.user?.wallet?.address ?? null;
   const { data, loading, error } = useVault(vaultAddress);
 
-  const role = detectRole(
-    walletAddress,
-    data?.vault ?? null,
-    data?.contributors ?? null
-  );
+  const role = detectRole(walletAddress, data);
 
   const showLogin = privy && !privy.authenticated && privy.ready;
   const showSetupNotice = !privy;
@@ -51,14 +46,14 @@ export default function DashboardPage() {
         ) : !data ? (
           <DashboardSkeleton />
         ) : role.kind === "treasurer" ? (
-          <TreasurerView data={data} />
+          <TreasurerView status={data} />
         ) : role.kind === "contributor" ? (
           <ContributorView contributor={role.record} />
         ) : (
           <UnrecognizedWallet
             walletAddress={walletAddress}
-            adminAddress={data.vault.admin.toBase58()}
-            contributorCount={data.contributors.length}
+            adminAddress={data.admin}
+            contributorCount={data.contributor_count}
           />
         )}
       </main>
@@ -162,6 +157,12 @@ function ErrorPanel({ message }: { message: string }) {
         Couldn't load vault
       </h2>
       <p className="mt-2 text-sm text-[var(--fg-muted)]">{message}</p>
+      <p className="mt-3 text-xs text-[var(--fg-subtle)]">
+        Make sure the agent server is running:{" "}
+        <code className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-xs">
+          cd agent && npm run serve
+        </code>
+      </p>
     </Card>
   );
 }

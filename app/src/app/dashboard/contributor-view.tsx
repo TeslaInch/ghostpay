@@ -4,16 +4,16 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ContributorSnapshot } from "@/lib/state";
+import { RoleContributor } from "@/hooks/use-role";
 
 interface Props {
-  contributor: ContributorSnapshot;
+  contributor: RoleContributor;
 }
 
 export function ContributorView({ contributor }: Props) {
-  const [sol, setSol] = useState(contributor.solPercentage);
-  const [usdc, setUsdc] = useState(contributor.usdcPercentage);
-  const [fiat, setFiat] = useState(contributor.fiatPercentage);
+  const [sol, setSol] = useState(contributor.sol_percentage);
+  const [usdc, setUsdc] = useState(contributor.usdc_percentage);
+  const [fiat, setFiat] = useState(contributor.fiat_percentage);
 
   const [salary, setSalary] = useState<number | null>(null);
   const [decryptState, setDecryptState] = useState<
@@ -32,25 +32,28 @@ export function ContributorView({ contributor }: Props) {
     }
     setUpdating(true);
     try {
-      // TODO: route through Privy-signed update_preferences. Mocked for now.
+      // TODO: route through Privy-signed update_preferences. Mocked for now —
+      // requires the contributor wallet to sign the tx, which means we need
+      // Privy's solana signing hooks wired here.
       await new Promise((r) => setTimeout(r, 800));
-      toast.success("Preferences saved on-chain");
+      toast.success("Preferences saved on-chain (mock)");
     } finally {
       setUpdating(false);
     }
   };
 
   const handleRevealSalary = async () => {
-    // Real flow: client → agent REST → encrypt gRPC executor →
-    // request_salary_decrypt → poll → reveal_salary → emit SalaryRevealed.
-    // Mocked here so the UX still demos cleanly without server-side gRPC.
+    // Real flow: contributor wallet signs request_salary_decrypt via Privy →
+    // agent brokers gRPC poll → reveal_salary tx parsed for the cleartext.
+    // Mocked here so the UX still demos cleanly. Plan/execute on the
+    // treasurer side already use the real agent endpoint.
     setDecryptState("requesting");
     await new Promise((r) => setTimeout(r, 900));
     setDecryptState("waiting");
     await new Promise((r) => setTimeout(r, 1800));
     setSalary(5000);
     setDecryptState("revealed");
-    toast.success("Salary decrypted via Encrypt network");
+    toast.success("Salary decrypted via Encrypt network (mock)");
   };
 
   return (
@@ -63,7 +66,7 @@ export function ContributorView({ contributor }: Props) {
           Hello, contributor
         </h1>
         <p className="mt-1 font-mono text-xs text-[var(--fg-subtle)]">
-          {contributor.wallet.toBase58()}
+          {contributor.wallet}
         </p>
       </div>
 
@@ -86,7 +89,7 @@ export function ContributorView({ contributor }: Props) {
                   </div>
                 </div>
                 <p className="mt-3 font-mono text-[10px] text-[var(--fg-subtle)]">
-                  {contributor.salaryCt.toBase58()}
+                  {contributor.salary_ct}
                 </p>
               </>
             )}
@@ -199,10 +202,7 @@ export function ContributorView({ contributor }: Props) {
             </thead>
             <tbody>
               {Array.from({ length: 4 }).map((_, i) => (
-                <tr
-                  key={i}
-                  className="border-t border-[var(--border)]"
-                >
+                <tr key={i} className="border-t border-[var(--border)]">
                   <Td className="text-[var(--fg-muted)]">
                     {new Date(
                       Date.now() - (i + 1) * 30 * 24 * 60 * 60 * 1000
@@ -244,9 +244,7 @@ function PrefSlider({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span
-          className="inline-flex items-center gap-2 text-sm font-medium text-[var(--fg)]"
-        >
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--fg)]">
           <span
             className="inline-block h-2 w-2 rounded-full"
             style={{ background: accent }}
