@@ -7,14 +7,17 @@ import { Footer } from "@/components/footer";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { DemoMode, DemoToggle } from "@/components/demo-toggle";
 import { useVault } from "@/hooks/use-vault";
-import { detectRole } from "@/hooks/use-role";
+import { detectRole, Role } from "@/hooks/use-role";
 import { TreasurerView } from "./treasurer-view";
 import { ContributorView } from "./contributor-view";
 import { DEFAULT_VAULT_ADDRESS } from "@/lib/config";
+import { VaultStatusResponse } from "@/lib/agent-api";
 
 export default function DashboardPage() {
   const [vaultAddress] = useState<string>(DEFAULT_VAULT_ADDRESS);
+  const [demoMode, setDemoMode] = useState<DemoMode>("auto");
 
   let privy: ReturnType<typeof usePrivy> | null = null;
   try {
@@ -26,15 +29,29 @@ export default function DashboardPage() {
   const walletAddress = privy?.user?.wallet?.address ?? null;
   const { data, loading, error } = useVault(vaultAddress);
 
-  const role = detectRole(walletAddress, data);
+  const detected = detectRole(walletAddress, data);
+  const role = applyDemoOverride(detected, demoMode, data);
 
   const showLogin = privy && !privy.authenticated && privy.ready;
   const showSetupNotice = !privy;
+
+  // Demo toggle is only useful once data is loaded; skip rendering it on
+  // the setup / login / loading / error states so it doesn't add noise.
+  const dataReady = !!data && !loading && !error && !showLogin && !showSetupNotice;
 
   return (
     <>
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        {dataReady && (
+          <div className="mb-6 flex justify-end">
+            <DemoToggle
+              mode={demoMode}
+              onChange={setDemoMode}
+              contributorsAvailable={data!.contributors.length > 0}
+            />
+          </div>
+        )}
         {showSetupNotice ? (
           <SetupNotice />
         ) : showLogin ? (
@@ -60,6 +77,21 @@ export default function DashboardPage() {
       <Footer />
     </>
   );
+}
+
+function applyDemoOverride(
+  detected: Role,
+  mode: DemoMode,
+  data: VaultStatusResponse | null
+): Role {
+  if (mode === "auto" || !data) return detected;
+  if (mode === "treasurer") {
+    return { kind: "treasurer", admin: data.admin };
+  }
+  // mode === "contributor"
+  const first = data.contributors[0];
+  if (first) return { kind: "contributor", record: first };
+  return detected;
 }
 
 function SetupNotice() {
