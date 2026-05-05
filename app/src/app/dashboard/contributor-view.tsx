@@ -189,7 +189,7 @@ export function ContributorView({ contributor }: Props) {
       {/* Payment history (mocked) */}
       <Card>
         <CardHeader title="Payment history" hint="Last 6 payouts" />
-        <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
           <table className="min-w-full text-sm">
             <thead className="bg-[var(--bg-elevated)]">
               <tr>

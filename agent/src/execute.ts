@@ -122,6 +122,34 @@ export async function executePayroll(
   const [cpiAuthority, cpiAuthorityBump] = deriveCpiAuthority();
   const results: ExecutionResult[] = [];
 
+  // Pre-flight: total SOL needed across the batch + reserve for tx fees.
+  // Roughly 0.0005 SOL per contributor for ix fees; bigger reserve = safer.
+  let totalLamportsNeeded = 0;
+  for (const c of contributors) {
+    const salaryRaw = salaries[c.wallet.toBase58()];
+    if (salaryRaw === undefined) continue;
+    const solUsd = (salaryRaw / 1_000_000) * (c.solPercentage / 100);
+    totalLamportsNeeded += Math.floor(
+      (solUsd / solPriceUsd) * LAMPORTS_PER_SOL
+    );
+  }
+  const FEE_RESERVE = Math.max(
+    contributors.length * 5_000_000,
+    20_000_000
+  );
+  const adminBalance = await connection.getBalance(admin.publicKey);
+  if (adminBalance < totalLamportsNeeded + FEE_RESERVE) {
+    encrypt.close();
+    throw new Error(
+      `Insufficient admin balance: need ${(
+        (totalLamportsNeeded + FEE_RESERVE) /
+        LAMPORTS_PER_SOL
+      ).toFixed(4)} SOL (transfers + fees), have ${(
+        adminBalance / LAMPORTS_PER_SOL
+      ).toFixed(4)} SOL`
+    );
+  }
+
   try {
     for (const c of contributors) {
       const wallet = c.wallet.toBase58();
@@ -139,85 +167,93 @@ export async function executePayroll(
         continue;
       }
 
-      // 1. Mint a fresh payment ciphertext authorized to ghostpay.
-      const { ciphertextIdentifiers } = await encrypt.createInput({
-        chain: Chain.Solana,
-        inputs: [
-          { ciphertextBytes: mockCiphertext(0n), fheType: FHE_UINT64 },
-        ],
-        authorized: Buffer.from(GHOSTPAY_PROGRAM_ID.toBytes()),
-        networkEncryptionPublicKey: NETWORK_KEY,
-      });
-      const paymentCt = new PublicKey(ciphertextIdentifiers[0]);
-
-      // 2. run_payroll — FHE verify_and_deduct on-chain.
-      const runIxData = Buffer.concat([
-        disc(idl, "run_payroll"),
-        Buffer.from([cpiAuthorityBump]),
-      ]);
-      const runIx = new TransactionInstruction({
-        programId: GHOSTPAY_PROGRAM_ID,
-        data: runIxData,
-        keys: [
-          { pubkey: vault.vault, isSigner: false, isWritable: false },
-          { pubkey: c.pda, isSigner: false, isWritable: false },
-          { pubkey: vault.balanceCt, isSigner: false, isWritable: true },
-          { pubkey: c.salaryCt, isSigner: false, isWritable: true },
-          { pubkey: paymentCt, isSigner: false, isWritable: true },
-          { pubkey: admin.publicKey, isSigner: true, isWritable: true },
-          ...encryptCpiAccountMetas(enc, cpiAuthority),
-        ],
-      });
-      const runSig = await sendAndConfirmTransaction(
-        connection,
-        new Transaction().add(runIx),
-        [admin],
-        { commitment: "confirmed" }
-      );
-
-      // 3. Transfer the SOL slice from admin wallet to contributor.
-      const solUsd = (salaryRaw / 1_000_000) * (c.solPercentage / 100);
-      const lamports = Math.floor(
-        (solUsd / solPriceUsd) * LAMPORTS_PER_SOL
-      );
-
-      let solSig: string | null = null;
+      // Each contributor in its own try/catch — one failure can't sink the
+      // whole batch. The result row carries `notes` describing what happened.
       const notes: string[] = [];
-      if (lamports > 0) {
-        const transferIx = SystemProgram.transfer({
-          fromPubkey: admin.publicKey,
-          toPubkey: c.wallet,
-          lamports,
+      let paymentCt: PublicKey | null = null;
+      let runSig = "";
+      let solSig: string | null = null;
+      let lamports = 0;
+
+      try {
+        // 1. Mint a fresh payment ciphertext authorized to ghostpay.
+        const { ciphertextIdentifiers } = await encrypt.createInput({
+          chain: Chain.Solana,
+          inputs: [
+            { ciphertextBytes: mockCiphertext(0n), fheType: FHE_UINT64 },
+          ],
+          authorized: Buffer.from(GHOSTPAY_PROGRAM_ID.toBytes()),
+          networkEncryptionPublicKey: NETWORK_KEY,
         });
-        solSig = await sendAndConfirmTransaction(
+        paymentCt = new PublicKey(ciphertextIdentifiers[0]);
+
+        // 2. run_payroll — FHE verify_and_deduct on-chain.
+        const runIxData = Buffer.concat([
+          disc(idl, "run_payroll"),
+          Buffer.from([cpiAuthorityBump]),
+        ]);
+        const runIx = new TransactionInstruction({
+          programId: GHOSTPAY_PROGRAM_ID,
+          data: runIxData,
+          keys: [
+            { pubkey: vault.vault, isSigner: false, isWritable: false },
+            { pubkey: c.pda, isSigner: false, isWritable: false },
+            { pubkey: vault.balanceCt, isSigner: false, isWritable: true },
+            { pubkey: c.salaryCt, isSigner: false, isWritable: true },
+            { pubkey: paymentCt, isSigner: false, isWritable: true },
+            { pubkey: admin.publicKey, isSigner: true, isWritable: true },
+            ...encryptCpiAccountMetas(enc, cpiAuthority),
+          ],
+        });
+        runSig = await sendAndConfirmTransaction(
           connection,
-          new Transaction().add(transferIx),
+          new Transaction().add(runIx),
           [admin],
           { commitment: "confirmed" }
         );
-      } else {
-        notes.push("SOL slice = 0 (or below 1 lamport rounding); skipping transfer");
-      }
 
-      const usdcSlice =
-        (salaryRaw * c.usdcPercentage) / 100;
-      if (usdcSlice > 0) {
-        notes.push(
-          `USDC slice ${usdcSlice / 1_000_000} skipped — no SPL transfer wired in this build`
-        );
-      }
-      const fiatSlice =
-        (salaryRaw * c.fiatPercentage) / 100;
-      if (fiatSlice > 0) {
-        notes.push(
-          `Fiat off-ramp ${fiatSlice / 1_000_000} skipped — no off-ramp wired in this build`
-        );
+        // 3. Transfer the SOL slice from admin wallet to contributor.
+        const solUsd = (salaryRaw / 1_000_000) * (c.solPercentage / 100);
+        lamports = Math.floor((solUsd / solPriceUsd) * LAMPORTS_PER_SOL);
+
+        if (lamports > 0) {
+          const transferIx = SystemProgram.transfer({
+            fromPubkey: admin.publicKey,
+            toPubkey: c.wallet,
+            lamports,
+          });
+          solSig = await sendAndConfirmTransaction(
+            connection,
+            new Transaction().add(transferIx),
+            [admin],
+            { commitment: "confirmed" }
+          );
+        } else {
+          notes.push("SOL slice = 0; transfer skipped");
+        }
+
+        const usdcSlice = (salaryRaw * c.usdcPercentage) / 100;
+        if (usdcSlice > 0) {
+          notes.push(
+            `USDC slice ${usdcSlice / 1_000_000} skipped — SPL transfer not wired`
+          );
+        }
+        const fiatSlice = (salaryRaw * c.fiatPercentage) / 100;
+        if (fiatSlice > 0) {
+          notes.push(
+            `Fiat off-ramp ${fiatSlice / 1_000_000} skipped — not wired`
+          );
+        }
+      } catch (err: any) {
+        const msg = err?.message ?? String(err);
+        const friendly = friendlyTxError(msg);
+        notes.push(`failed: ${friendly}`);
       }
 
       results.push({
         contributor: c.pda.toBase58(),
         wallet,
-        payment_ct: paymentCt.toBase58(),
+        payment_ct: paymentCt?.toBase58() ?? "",
         run_payroll_sig: runSig,
         sol_transfer_sig: solSig,
         sol_transferred_lamports: lamports,
@@ -229,4 +265,18 @@ export async function executePayroll(
   }
 
   return results;
+}
+
+function friendlyTxError(raw: string): string {
+  if (/insufficient (lamports|funds)/i.test(raw))
+    return "insufficient funds in admin wallet (transfer or fee)";
+  if (/blockhash not found/i.test(raw))
+    return "stale blockhash — RPC drift, retry";
+  if (/0x1[0-9a-f]+/i.test(raw)) {
+    const code = raw.match(/0x[0-9a-f]+/i)?.[0];
+    return `program rejected with ${code}`;
+  }
+  if (/timeout/i.test(raw)) return "RPC timeout — retry";
+  // Strip stack traces — just the first line.
+  return raw.split("\n")[0].slice(0, 220);
 }

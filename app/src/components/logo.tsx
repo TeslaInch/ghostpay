@@ -47,7 +47,7 @@ export function LogoMark({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       <Logo size={28} />
-      <span className="font-semibold tracking-tight text-[var(--fg)]">
+      <span className="hidden font-semibold tracking-tight text-[var(--fg)] sm:inline">
         GhostPay
       </span>
     </div>

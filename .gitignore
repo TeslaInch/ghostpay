@@ -20,3 +20,6 @@ dist
 # Test secrets
 tests/admin-keypair.json
 tests/bun.lock
+
+# Local Claude Code state
+.claude/

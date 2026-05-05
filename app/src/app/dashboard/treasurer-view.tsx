@@ -234,7 +234,7 @@ export function TreasurerView({ status }: Props) {
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--fg-muted)]">
             Per-contributor split
           </h4>
-          <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+          <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
             <table className="min-w-full text-sm">
               <thead className="bg-[var(--bg-elevated)]">
                 <tr>

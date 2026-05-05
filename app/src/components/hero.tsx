@@ -11,14 +11,14 @@ export function Hero() {
   };
 
   return (
-    <section className="relative pt-24 pb-32 sm:pt-32">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="relative pt-20 pb-24 sm:pt-32 sm:pb-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="max-w-3xl">
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/[0.06] px-3 py-1 text-xs font-medium text-[var(--accent)]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)] gp-pulse" />
             Live on Solana devnet
           </span>
-          <h1 className="text-balance text-5xl font-semibold tracking-tight text-[var(--fg)] sm:text-6xl">
+          <h1 className="text-balance text-4xl font-semibold tracking-tight text-[var(--fg)] sm:text-5xl md:text-6xl">
             Private payroll
             <br />
             <span className="bg-gradient-to-r from-[var(--accent)] to-[#5fdcff] bg-clip-text text-transparent">
