@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "./ui/button";
 
 export function Hero() {
+  const scrollToWaitlist = () => {
+    document
+      .getElementById("waitlist")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <section className="relative pt-24 pb-32 sm:pt-32">
       <div className="mx-auto max-w-7xl px-6">
@@ -18,17 +26,21 @@ export function Hero() {
             </span>
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--fg-muted)]">
-            Salaries stay encrypted on-chain. Treasurers see total burn,
-            runway, and benchmarks — all computed homomorphically with FHE,
-            never revealing what any individual contributor earns.
+            Encrypted salaries. Transparent treasury.{" "}
+            <span className="text-[var(--fg)]">
+              Powered by FHE on Solana.
+            </span>
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Link href="/dashboard">
               <Button size="lg">Launch app</Button>
             </Link>
+            <Button onClick={scrollToWaitlist} variant="secondary" size="lg">
+              Join waitlist
+            </Button>
             <Link
               href="#how-it-works"
-              className="text-sm font-medium text-[var(--fg-muted)] hover:text-[var(--fg)]"
+              className="ml-1 text-sm font-medium text-[var(--fg-muted)] hover:text-[var(--fg)]"
             >
               See how it works →
             </Link>
