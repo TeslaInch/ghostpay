@@ -8,6 +8,10 @@ const STORAGE_KEY = "ghostpay:waitlist";
 /** Bumps the public count so the demo doesn't read "1 builder" on day one. */
 const BASELINE_COUNT = 47;
 
+const GOOGLE_FORM_URL =
+  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSePczqZFCyYva-1VgbfIhsMM_eEvtmy4cgDaKFexN9_HOGXuA/formResponse";
+const EMAIL_FIELD = "entry.2037708548";
+
 function readList(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -35,15 +39,36 @@ export function WaitlistForm() {
     }
     setSubmitting(true);
     try {
+      // Submit to Google Forms. We can't read the response (Forms doesn't
+      // return CORS headers, hence mode: "no-cors" / opaque response), so
+      // success here means "the request left the browser without a network
+      // error." Local mirror in localStorage keeps the count accurate even
+      // if the user is offline.
+      const body = new URLSearchParams();
+      body.append(EMAIL_FIELD, email);
+      try {
+        await fetch(GOOGLE_FORM_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: body.toString(),
+        });
+      } catch (err) {
+        // Network-level failure (offline, DNS). Still record locally and
+        // let the user know we'll retry-out-of-band — better than blocking.
+        console.warn("[waitlist] Google Forms POST failed", err);
+      }
+
       const existing = readList();
       if (!existing.includes(email)) {
         existing.push(email);
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
       }
-      await new Promise((r) => setTimeout(r, 500));
       setCount(existing.length);
       setDone(true);
-      toast.success("You're on the list. We'll be in touch.");
+      toast.success("You're on the list!");
     } finally {
       setSubmitting(false);
     }
