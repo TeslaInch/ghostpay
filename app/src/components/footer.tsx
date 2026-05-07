@@ -2,8 +2,6 @@ import { LogoMark } from "./logo";
 
 const links = [
   { label: "GitHub", href: "https://github.com/TeslaInch/ghostpay" },
-  { label: "Twitter", href: "https://twitter.com/GhostPayHQ" },
-  { label: "Docs", href: "/docs" },
 ];
 
 export function Footer() {
